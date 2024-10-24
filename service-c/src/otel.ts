@@ -18,7 +18,7 @@ import {
 
 const sdk = new NodeSDK({
     resource: new Resource({
-        [ATTR_SERVICE_NAME]: 'service-a',
+        [ATTR_SERVICE_NAME]: 'service-c',
         [ATTR_SERVICE_VERSION]: '1.0',
       }),
     traceExporter: new OTLPTraceExporter({
