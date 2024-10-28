@@ -8,6 +8,7 @@ import { trace, Span, SpanStatusCode } from '@opentelemetry/api';
 
 import pino from 'pino';
 import { createMiddleware } from 'hono/factory';
+import { addTraceName, createSpan } from './utils';
 
 const pinoLogger = pino({
     name: 'service-a',
@@ -16,16 +17,9 @@ const pinoLogger = pino({
 
 const tracer = trace.getTracer('service-a');
 
-const traceName = createMiddleware(async (c, next) => {
-  const method = c.req.method;
-  const path = c.req.path;
-  await trace.getActiveSpan().updateName(`${method} ${path}`)
-  await next()
-})
-
 const app = new Hono()
 
-app.use(traceName)
+app.use(addTraceName(trace));
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
@@ -33,8 +27,8 @@ app.get('/', (c) => {
 
 app.get('/shipping-address/:customerId', async (c) => {
   const customerId = c.req.param('customerId')
- pinoLogger.info(`customerId ${customerId}`)
-  const findShippingAddressSpan = tracer.startSpan('find-shipping-address');
+  pinoLogger.info(`customerId ${customerId}`)
+  const findShippingAddressSpan = createSpan(tracer, 'find-shipping');
   const customer = await findShippingAddress(customerId)
   findShippingAddressSpan.end()
   return c.json(customer)
@@ -45,7 +39,7 @@ const findShippingAddress = async (customerId) => {
     return new Promise<any>((resolve, reject)=> {
       setTimeout(()=> {
         const customer = customers.find(c => c.customerId == customerId);
-       pinoLogger.info(`customer ${customer}`)
+        pinoLogger.info(`customer ${customer}`)
   
         if(!!customer){
           resolve({
