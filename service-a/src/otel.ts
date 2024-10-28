@@ -1,5 +1,5 @@
 /*instrumentation.ts*/
-import { NodeSDK } from '@opentelemetry/sdk-node';
+import { NodeSDK, logs } from '@opentelemetry/sdk-node';
 import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import {
@@ -13,6 +13,8 @@ import {
     ATTR_SERVICE_NAME,
     ATTR_SERVICE_VERSION,
   } from '@opentelemetry/semantic-conventions';
+
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 
 
 
@@ -33,7 +35,10 @@ const sdk = new NodeSDK({
             headers: {}, // an optional object containing custom headers to be sent with each request
         }),
     }),
-  instrumentations: [getNodeAutoInstrumentations()],
+    logRecordProcessor: new logs.SimpleLogRecordProcessor(new OTLPLogExporter()),
+  instrumentations: [
+    getNodeAutoInstrumentations()
+  ],
 });
 
 sdk.start();

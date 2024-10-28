@@ -1,31 +1,42 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
-import { logger } from 'hono/logger'
+import { createMiddleware } from 'hono/factory'
 
 import { v4 as uuid } from 'uuid';
 
 import { trace, Span, SpanStatusCode } from '@opentelemetry/api';
 
+import pino from 'pino';
+
+const pinoLogger = pino({
+    name: 'service-a',
+    level: 'debug'
+});
+
 const tracer = trace.getTracer('service-a');
 
-const log = (message: string) => {
-  const traceId = trace.getActiveSpan().spanContext().traceId
-  const spanId = trace.getActiveSpan().spanContext().spanId
-  console.log(`traceId: ${traceId}`, `spanId: ${traceId}`, message)
-}
-
+const traceName = createMiddleware(async (c, next) => {
+  const method = c.req.method;
+  const path = c.req.path;
+  await trace.getActiveSpan().updateName(`${method} ${path}`)
+  await next()
+})
 
 const app = new Hono()
 
-app.use(logger(log))
+app.use(traceName)
+
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
 
 app.post('/order', async (c) => {
+
+  pinoLogger.info('hi pino000');
+  console.log('hi console')
   const orderDto = await c.req.json();
-  log(`Creating order for: ${JSON.stringify(orderDto)}`);
+  pinoLogger.info(`Creating order for: ${JSON.stringify(orderDto)}`);
 
   const createOrderSpan = tracer.startSpan('create-order');
   const order = await createOrder(orderDto);
@@ -38,7 +49,7 @@ app.post('/order', async (c) => {
     body: JSON.stringify(order),
   }).then(response => response.json())
 
-  log(JSON.stringify(shipping))
+ pinoLogger.info(JSON.stringify(shipping))
   return c.json({order, shipping})
 })
 
